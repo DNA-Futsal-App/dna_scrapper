@@ -1,0 +1,297 @@
+openapi: 3.1.0
+info:
+  title: DNA Futsal Scraper API
+  version: 1.0.0
+  description: API de coleta controlada dos dados públicos do portal de eventos da FPFS.
+servers:
+  - url: http://localhost:8080
+security:
+  - ApiKeyAuth: []
+paths:
+  /api/v1/events/search:
+    get:
+      summary: Pesquisa eventos pelos filtros do portal
+      parameters:
+        - $ref: '#/components/parameters/Season'
+        - name: title
+          in: query
+          schema: { type: string }
+        - name: division
+          in: query
+          schema: { type: string }
+        - name: category
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Eventos encontrados
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/EventMetadata' }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/v1/events/{eventId}:
+    get:
+      summary: Consulta os metadados de um evento
+      parameters:
+        - $ref: '#/components/parameters/EventId'
+      responses:
+        '200':
+          description: Metadados do evento
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EventMetadata' }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/v1/events/{eventId}/standings:
+    get:
+      summary: Consulta a classificação
+      parameters:
+        - $ref: '#/components/parameters/EventId'
+        - name: phase
+          in: query
+          schema: { type: string }
+        - name: group
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Classificação filtrada
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/StandingRow' }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/v1/events/{eventId}/games:
+    get:
+      summary: Consulta jogos realizados e agendados
+      parameters:
+        - $ref: '#/components/parameters/EventId'
+        - name: phase
+          in: query
+          schema: { type: string }
+        - name: team
+          in: query
+          schema: { type: string }
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: Jogos filtrados
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Game' }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/v1/events/{eventId}/teams:
+    get:
+      summary: Lista as equipes participantes
+      parameters:
+        - $ref: '#/components/parameters/EventId'
+      responses:
+        '200':
+          description: Equipes participantes
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/TeamSummary' }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/v1/events/{eventId}/teams/{teamId}:
+    get:
+      summary: Consulta os detalhes de uma equipe
+      parameters:
+        - $ref: '#/components/parameters/EventId'
+        - $ref: '#/components/parameters/TeamId'
+        - name: includePersonalData
+          in: query
+          schema: { type: boolean, default: false }
+      responses:
+        '200':
+          description: Detalhes da equipe
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TeamDetails' }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/v1/events/{eventId}/scorers:
+    get:
+      summary: Consulta a artilharia
+      parameters:
+        - $ref: '#/components/parameters/EventId'
+        - name: phase
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 500, default: 100 }
+        - name: includePersonalData
+          in: query
+          schema: { type: boolean, default: false }
+      responses:
+        '200':
+          description: Artilharia filtrada
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Scorer' }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/v1/events/{eventId}/snapshot:
+    get:
+      summary: Gera um snapshot agregado do evento
+      parameters:
+        - $ref: '#/components/parameters/EventId'
+      responses:
+        '200':
+          description: Snapshot do evento
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EventSnapshot' }
+        default: { $ref: '#/components/responses/Problem' }
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: Opcional quando DNA_FUTSAL_API_KEY estiver vazia.
+  parameters:
+    EventId:
+      name: eventId
+      in: path
+      required: true
+      schema: { type: integer, format: int64, minimum: 1 }
+    TeamId:
+      name: teamId
+      in: path
+      required: true
+      schema: { type: integer, format: int64, minimum: 1 }
+    Season:
+      name: season
+      in: query
+      required: true
+      schema: { type: integer, minimum: 2016, maximum: 2100 }
+  responses:
+    Problem:
+      description: Erro no formato RFC 9457 Problem Details
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetail' }
+  schemas:
+    EventMetadata:
+      type: object
+      required: [eventId, title, season, category, division, sourceUrl]
+      properties:
+        eventId: { type: integer, format: int64 }
+        title: { type: string }
+        season: { type: integer }
+        category: { type: string }
+        division: { type: string }
+        sourceUrl: { type: string, format: uri }
+    StandingRow:
+      type: object
+      properties:
+        phase: { type: string }
+        group: { type: [string, 'null'] }
+        position: { type: [integer, 'null'] }
+        team: { type: string }
+        logoUrl: { type: [string, 'null'], format: uri }
+        points: { type: [integer, 'null'] }
+        games: { type: [integer, 'null'] }
+        wins: { type: [integer, 'null'] }
+        draws: { type: [integer, 'null'] }
+        losses: { type: [integer, 'null'] }
+        goalsFor: { type: [integer, 'null'] }
+        goalsAgainst: { type: [integer, 'null'] }
+        goalDifference: { type: [integer, 'null'] }
+        average: { type: [number, 'null'], format: double }
+        goalsForAverage: { type: [number, 'null'], format: double }
+        goalsAgainstAverage: { type: [number, 'null'], format: double }
+        technicalIndex: { type: [number, 'null'], format: double }
+    Game:
+      type: object
+      properties:
+        gameId: { type: [integer, 'null'], format: int64 }
+        phase: { type: string }
+        date: { type: [string, 'null'], format: date }
+        time: { type: [string, 'null'], format: time }
+        venue: { type: [string, 'null'] }
+        homeTeam: { type: [string, 'null'] }
+        homeLogoUrl: { type: [string, 'null'], format: uri }
+        homeScore: { type: [integer, 'null'] }
+        awayTeam: { type: [string, 'null'] }
+        awayLogoUrl: { type: [string, 'null'], format: uri }
+        awayScore: { type: [integer, 'null'] }
+        walkover: { type: boolean }
+        matchSheetUrl: { type: [string, 'null'], format: uri }
+    TeamSummary:
+      type: object
+      properties:
+        teamId: { type: integer, format: int64 }
+        name: { type: string }
+        logoUrl: { type: [string, 'null'], format: uri }
+        sourceUrl: { type: string, format: uri }
+    PersonEntry:
+      type: object
+      properties:
+        name: { type: string }
+        secondaryName: { type: [string, 'null'] }
+        role: { type: [string, 'null'] }
+        imageUrl: { type: [string, 'null'], format: uri }
+    TeamDetails:
+      allOf:
+        - $ref: '#/components/schemas/TeamSummary'
+        - type: object
+          properties:
+            eventId: { type: integer, format: int64 }
+            address: { type: [string, 'null'] }
+            phone: { type: [string, 'null'] }
+            athletes:
+              type: array
+              items: { $ref: '#/components/schemas/PersonEntry' }
+            staff:
+              type: array
+              items: { $ref: '#/components/schemas/PersonEntry' }
+            personalDataSuppressed: { type: boolean }
+    Scorer:
+      type: object
+      properties:
+        phase: { type: string }
+        player: { type: [string, 'null'] }
+        playerImageUrl: { type: [string, 'null'], format: uri }
+        team: { type: string }
+        teamLogoUrl: { type: [string, 'null'], format: uri }
+        goals: { type: [integer, 'null'] }
+        personalDataSuppressed: { type: boolean }
+    EventSnapshot:
+      type: object
+      properties:
+        event: { $ref: '#/components/schemas/EventMetadata' }
+        standings:
+          type: array
+          items: { $ref: '#/components/schemas/StandingRow' }
+        games:
+          type: array
+          items: { $ref: '#/components/schemas/Game' }
+        teams:
+          type: array
+          items: { $ref: '#/components/schemas/TeamSummary' }
+        scorers:
+          type: array
+          items: { $ref: '#/components/schemas/Scorer' }
+        collectedAt: { type: string, format: date-time }
+    ProblemDetail:
+      type: object
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string, format: uri-reference }
+        timestamp: { type: string, format: date-time }

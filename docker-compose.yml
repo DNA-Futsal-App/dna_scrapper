@@ -1,0 +1,15 @@
+services:
+  scraper-api:
+    build: .
+    init: true
+    ipc: host
+    ports:
+      - "8080:8080"
+    environment:
+      DNA_FUTSAL_API_KEY: "troque-esta-chave"
+      API_REQUESTS_PER_MINUTE: "60"
+      ALLOWED_ORIGINS: "http://localhost:3000,http://localhost:5173"
+      EXPOSE_PERSONAL_DATA: "false"
+      RESPECT_ROBOTS_TXT: "true"
+      SCRAPER_USER_AGENT: "DNAFutsalDataAdapter/1.0 (+contato@seu-dominio.com.br)"
+    restart: unless-stopped
