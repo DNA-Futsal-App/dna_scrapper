@@ -1,0 +1,42 @@
+server:
+  port: ${PORT:8080}
+  error:
+    include-message: never
+
+spring:
+  application:
+    name: dna-futsal-scraper-api
+  jackson:
+    default-property-inclusion: non_null
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,caches
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+logging:
+  level:
+    br.com.dnafutsal.scraper: INFO
+
+dna-futsal:
+  scraper:
+    base-url: ${SCRAPER_BASE_URL:https://eventos.admfutsal.com.br}
+    match-sheet-base-url: ${MATCH_SHEET_BASE_URL:https://admfutsal.com.br}
+    user-agent: ${SCRAPER_USER_AGENT:DNAFutsalDataAdapter/1.0 (+contato@seu-dominio.com.br)}
+    connect-timeout: 8s
+    request-timeout: 20s
+    minimum-delay: 900ms
+    max-retries: 2
+    browser-search-enabled: ${BROWSER_SEARCH_ENABLED:true}
+    expose-personal-data: ${EXPOSE_PERSONAL_DATA:true}
+    respect-robots-txt: ${RESPECT_ROBOTS_TXT:true}
+
+  api:
+    api-key: ${DNA_FUTSAL_API_KEY:}
+    requests-per-minute: ${API_REQUESTS_PER_MINUTE:60}
+    allowed-origins: ${ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
