@@ -18,7 +18,6 @@ public class WebConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(properties.allowedOriginList());
         configuration.setAllowedMethods(List.of("GET", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Content-Type", "X-API-Key"));
         configuration.setMaxAge(3_600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

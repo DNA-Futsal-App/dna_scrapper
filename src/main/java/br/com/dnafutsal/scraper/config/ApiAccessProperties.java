@@ -15,7 +15,7 @@ public record ApiAccessProperties(
         apiKey = apiKey == null ? "" : apiKey.trim();
         requestsPerMinute = requestsPerMinute <= 0 ? 60 : requestsPerMinute;
         allowedOrigins = allowedOrigins == null || allowedOrigins.isBlank()
-                ? "http://localhost:3000,http://localhost:5173"
+                ? "http://localhost:3000,http://localhost:5173,http://localhost:8080"
                 : allowedOrigins;
     }
 

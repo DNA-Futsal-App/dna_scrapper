@@ -1,6 +1,7 @@
 package br.com.dnafutsal.scraper.browser;
 
 import br.com.dnafutsal.scraper.config.ScraperProperties;
+import br.com.dnafutsal.scraper.domain.CatalogEntry;
 import br.com.dnafutsal.scraper.domain.EventSearchCriteria;
 import br.com.dnafutsal.scraper.exception.UpstreamAccessException;
 import com.microsoft.playwright.Browser;
@@ -15,9 +16,13 @@ import com.microsoft.playwright.options.WaitUntilState;
 import jakarta.annotation.PreDestroy;
 import org.springframework.stereotype.Component;
 
+import java.text.Normalizer;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Matcher;
@@ -104,6 +109,56 @@ public class EventSearchBrowser {
         }
     }
 
+    public List<CatalogEntry> catalog(int season) {
+        if (!properties.browserSearchEnabled()) {
+            throw new IllegalStateException("A pesquisa visual estÃ¡ desabilitada por configuraÃ§Ã£o");
+        }
+
+        browserLock.lock();
+        try {
+            ensureStarted();
+            try (BrowserContext context = browser.newContext(new Browser.NewContextOptions()
+                    .setUserAgent(properties.userAgent())
+                    .setLocale("pt-BR"))) {
+                Page page = context.newPage();
+                page.setDefaultTimeout(properties.requestTimeout().toMillis());
+                page.navigate(
+                        properties.baseUrl(),
+                        new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED)
+                );
+
+                List<Locator> selects = visibleSelects(page);
+                if (selects.size() < 4) {
+                    throw new UpstreamAccessException("A estrutura dos filtros do site de origem mudou");
+                }
+
+                selectApproximate(selects.get(0), String.valueOf(season));
+                waitForDependentOptions(page);
+
+                Map<String, CatalogEntry> entries = new LinkedHashMap<>();
+                for (SelectOption title : options(selects.get(1))) {
+                    selectByValue(selects.get(1), title.value());
+                    waitForDependentOptions(page);
+
+                    for (SelectOption division : options(selects.get(2))) {
+                        selectByValue(selects.get(2), division.value());
+                        waitForDependentOptions(page);
+
+                        for (SelectOption category : options(selects.get(3))) {
+                            CatalogEntry entry = new CatalogEntry(title.label(), division.label(), category.label());
+                            entries.putIfAbsent(catalogKey(entry), entry);
+                        }
+                    }
+                }
+                return List.copyOf(entries.values());
+            }
+        } catch (PlaywrightException exception) {
+            throw new UpstreamAccessException("Falha ao ler os filtros na pÃ¡gina da FPFS", exception);
+        } finally {
+            browserLock.unlock();
+        }
+    }
+
     private List<Locator> visibleSelects(Page page) {
         Locator all = page.locator("select:visible");
         List<Locator> result = new ArrayList<>();
@@ -111,6 +166,32 @@ public class EventSearchBrowser {
             result.add(all.nth(index));
         }
         return result;
+    }
+
+    private List<SelectOption> options(Locator select) {
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> rawOptions = (List<Map<String, Object>>) select.evaluate("""
+                select => Array.from(select.options).map(option => ({
+                  value: option.value || '',
+                  label: option.textContent || ''
+                }))
+                """);
+
+        List<SelectOption> result = new ArrayList<>();
+        for (Map<String, Object> rawOption : rawOptions) {
+            SelectOption option = new SelectOption(
+                    String.valueOf(rawOption.getOrDefault("value", "")).trim(),
+                    String.valueOf(rawOption.getOrDefault("label", "")).trim()
+            );
+            if (isRealOption(option)) {
+                result.add(option);
+            }
+        }
+        return result;
+    }
+
+    private void selectByValue(Locator select, String value) {
+        select.selectOption(value);
     }
 
     private void selectApproximate(Locator select, String requestedText) {
@@ -168,6 +249,29 @@ public class EventSearchBrowser {
         return value != null && !value.isBlank();
     }
 
+    private boolean isRealOption(SelectOption option) {
+        String normalized = normalize(option.label());
+        return !option.value().isBlank()
+                && !normalized.isBlank()
+                && !normalized.equals("todos")
+                && !normalized.equals("todas")
+                && !normalized.equals("selecione")
+                && !normalized.startsWith("selecione ");
+    }
+
+    private String catalogKey(CatalogEntry entry) {
+        return normalize(entry.title()) + "|" + normalize(entry.division()) + "|" + normalize(entry.category());
+    }
+
+    private String normalize(String value) {
+        return Normalizer.normalize(value == null ? "" : value, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .toLowerCase(Locale.ROOT)
+                .replaceAll("[^\\p{L}\\p{N}]+", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+    }
+
     private void ensureStarted() {
         if (browser != null) {
             return;
@@ -200,5 +304,8 @@ public class EventSearchBrowser {
             playwright.close();
             playwright = null;
         }
+    }
+
+    private record SelectOption(String value, String label) {
     }
 }

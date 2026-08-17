@@ -2,9 +2,12 @@ package br.com.dnafutsal.scraper.service;
 
 import br.com.dnafutsal.scraper.browser.EventSearchBrowser;
 import br.com.dnafutsal.scraper.config.ScraperProperties;
+import br.com.dnafutsal.scraper.domain.CatalogEntry;
+import br.com.dnafutsal.scraper.domain.CategoryTeams;
 import br.com.dnafutsal.scraper.domain.EventMetadata;
 import br.com.dnafutsal.scraper.domain.EventSearchCriteria;
 import br.com.dnafutsal.scraper.domain.EventSnapshot;
+import br.com.dnafutsal.scraper.domain.EventTeams;
 import br.com.dnafutsal.scraper.domain.Game;
 import br.com.dnafutsal.scraper.domain.Scorer;
 import br.com.dnafutsal.scraper.domain.StandingRow;
@@ -26,8 +29,10 @@ import org.springframework.stereotype.Service;
 import java.text.Normalizer;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 @Service
 public class FutsalScraperService {
@@ -81,6 +86,62 @@ public class FutsalScraperService {
             }
         }
         return List.copyOf(result);
+    }
+
+    @Cacheable(cacheNames = "catalog", key = "#season")
+    public List<CatalogEntry> catalog(int season) {
+        return searchBrowser.catalog(season);
+    }
+
+    @Cacheable(cacheNames = "divisions", key = "#season")
+    public List<String> divisions(int season) {
+        Map<String, String> divisions = new LinkedHashMap<>();
+        for (CatalogEntry entry : catalog(season)) {
+            divisions.putIfAbsent(normalize(entry.division()), entry.division());
+        }
+        return List.copyOf(divisions.values());
+    }
+
+    @Cacheable(cacheNames = "categories", key = "#season + ':' + (#division == null ? '' : #division)")
+    public List<String> categories(int season, String division) {
+        Map<String, String> categories = new LinkedHashMap<>();
+        for (CatalogEntry entry : catalog(season)) {
+            if (division == null || division.isBlank() || equalsNormalized(entry.division(), division)) {
+                categories.putIfAbsent(normalize(entry.category()), entry.category());
+            }
+        }
+        return List.copyOf(categories.values());
+    }
+
+    @Cacheable(cacheNames = "category-teams", key = "#season + ':' + #division + ':' + #category")
+    public List<CategoryTeams> categoryTeams(int season, String division, String category) {
+        requireText("division", division);
+        requireText("category", category);
+
+        String resolvedDivision = null;
+        String resolvedCategory = null;
+        Map<Long, EventTeams> events = new LinkedHashMap<>();
+
+        for (CatalogEntry entry : catalog(season)) {
+            if (!equalsNormalized(entry.division(), division) || !equalsNormalized(entry.category(), category)) {
+                continue;
+            }
+
+            resolvedDivision = resolvedDivision == null ? entry.division() : resolvedDivision;
+            resolvedCategory = resolvedCategory == null ? entry.category() : resolvedCategory;
+
+            List<EventMetadata> foundEvents = searchEvents(
+                    new EventSearchCriteria(season, entry.title(), entry.division(), entry.category())
+            );
+            for (EventMetadata event : foundEvents) {
+                events.putIfAbsent(event.eventId(), new EventTeams(event, teams(event.eventId())));
+            }
+        }
+
+        if (events.isEmpty()) {
+            return List.of();
+        }
+        return List.of(new CategoryTeams(resolvedDivision, resolvedCategory, List.copyOf(events.values())));
     }
 
     @Cacheable(cacheNames = "event-metadata", key = "#eventId")
@@ -164,6 +225,16 @@ public class FutsalScraperService {
 
     private boolean containsNormalized(String actual, String expected) {
         return expected == null || expected.isBlank() || normalize(actual).contains(normalize(expected));
+    }
+
+    private boolean equalsNormalized(String actual, String expected) {
+        return normalize(actual).equals(normalize(expected));
+    }
+
+    private void requireText(String name, String value) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException("Informe o parÃ¢metro " + name);
+        }
     }
 
     private String normalize(String value) {

@@ -8,6 +8,73 @@ servers:
 security:
   - ApiKeyAuth: []
 paths:
+  /api/v1/division:
+    get:
+      summary: Lista as divisÃµes disponÃ­veis para o front-end
+      parameters:
+        - $ref: '#/components/parameters/OptionalSeason'
+      responses:
+        '200':
+          description: DivisÃµes encontradas nos filtros do portal
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: string }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/v1/divisions:
+    get:
+      summary: Alias de /api/v1/division
+      parameters:
+        - $ref: '#/components/parameters/OptionalSeason'
+      responses:
+        '200':
+          description: DivisÃµes encontradas nos filtros do portal
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: string }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/v1/categories:
+    get:
+      summary: Lista as categorias disponÃ­veis para o front-end
+      parameters:
+        - $ref: '#/components/parameters/OptionalSeason'
+        - name: division
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Categorias encontradas nos filtros do portal
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: string }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/v1:
+    get:
+      summary: Lista os times por divisÃ£o e categoria
+      parameters:
+        - $ref: '#/components/parameters/OptionalSeason'
+        - name: division
+          in: query
+          required: true
+          schema: { type: string }
+        - name: category
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Times agrupados pela categoria selecionada
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/CategoryTeams' }
+        default: { $ref: '#/components/responses/Problem' }
   /api/v1/events/search:
     get:
       summary: Pesquisa eventos pelos filtros do portal
@@ -177,6 +244,12 @@ components:
       in: query
       required: true
       schema: { type: integer, minimum: 2016, maximum: 2100 }
+    OptionalSeason:
+      name: season
+      in: query
+      required: false
+      description: Quando omitida, usa o ano atual do servidor.
+      schema: { type: integer, minimum: 2016, maximum: 2100 }
   responses:
     Problem:
       description: Erro no formato RFC 9457 Problem Details
@@ -237,6 +310,21 @@ components:
         name: { type: string }
         logoUrl: { type: [string, 'null'], format: uri }
         sourceUrl: { type: string, format: uri }
+    EventTeams:
+      type: object
+      properties:
+        event: { $ref: '#/components/schemas/EventMetadata' }
+        teams:
+          type: array
+          items: { $ref: '#/components/schemas/TeamSummary' }
+    CategoryTeams:
+      type: object
+      properties:
+        division: { type: string }
+        category: { type: string }
+        events:
+          type: array
+          items: { $ref: '#/components/schemas/EventTeams' }
     PersonEntry:
       type: object
       properties:

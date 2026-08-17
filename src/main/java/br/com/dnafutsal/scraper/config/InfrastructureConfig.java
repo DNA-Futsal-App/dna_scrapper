@@ -23,7 +23,8 @@ public class InfrastructureConfig {
     @Bean
     CacheManager cacheManager() {
         CaffeineCacheManager manager = new CaffeineCacheManager(
-                "event-metadata", "standings", "games", "teams", "team-details", "scorers", "event-search", "snapshot"
+                "event-metadata", "standings", "games", "teams", "team-details", "scorers", "event-search",
+                "snapshot", "catalog", "divisions", "categories", "category-teams"
         );
         manager.setCaffeine(Caffeine.newBuilder()
                 .maximumSize(2_000)
