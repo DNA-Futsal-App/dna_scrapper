@@ -1,27 +1,17 @@
 package br.com.dnafutsal.scraper.api;
 
-import br.com.dnafutsal.scraper.domain.EventMetadata;
-import br.com.dnafutsal.scraper.domain.EventSearchCriteria;
-import br.com.dnafutsal.scraper.domain.EventSnapshot;
-import br.com.dnafutsal.scraper.domain.Game;
-import br.com.dnafutsal.scraper.domain.Scorer;
-import br.com.dnafutsal.scraper.domain.StandingRow;
-import br.com.dnafutsal.scraper.domain.TeamDetails;
-import br.com.dnafutsal.scraper.domain.TeamSummary;
+import br.com.dnafutsal.scraper.domain.*;
 import br.com.dnafutsal.scraper.service.FutsalScraperService;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.text.Normalizer;
 import java.time.LocalDate;
+import java.time.Year;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -39,12 +29,14 @@ public class EventController {
 
     @GetMapping("/search")
     public List<EventMetadata> search(
-            @RequestParam @Min(2016) @Max(2100) Integer season,
+            @RequestParam(required = false) @Min(2016) @Max(2100)  Integer season,
             @RequestParam(required = false) String title,
             @RequestParam(required = false) String division,
             @RequestParam(required = false) String category
     ) {
-        return service.searchEvents(new EventSearchCriteria(season, title, division, category));
+        int currentYear = Year.now().getValue();
+        Integer dseason = season == null ? currentYear : season;
+        return service.searchEvents(new EventSearchCriteria(dseason, title, division, category));
     }
 
     @GetMapping("/{eventId}")
@@ -100,8 +92,8 @@ public class EventController {
     public List<Scorer> scorers(
             @PathVariable @Positive long eventId,
             @RequestParam(required = false) String phase,
-            @RequestParam(defaultValue = "100") @Min(1) @Max(500) int limit,
-            @RequestParam(defaultValue = "false") boolean includePersonalData
+            @RequestParam(defaultValue = "10") @Min(1) @Max(500) int limit,
+            @RequestParam(defaultValue = "true") boolean includePersonalData
     ) {
         return service.scorers(eventId, includePersonalData).stream()
                 .filter(scorer -> contains(scorer.phase(), phase))

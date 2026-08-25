@@ -189,8 +189,7 @@ public class FutsalScraperService {
     @Cacheable(cacheNames = "scorers", key = "#eventId + ':' + #includePersonalData")
     public List<Scorer> scorers(long eventId, boolean includePersonalData) {
         List<Scorer> parsed = scorersParser.parse(fetcher.getDocument(eventUrl(eventId, "/artilharia")));
-        boolean expose = includePersonalData && properties.exposePersonalData();
-        if (expose) {
+        if (includePersonalData) {
             return List.copyOf(parsed);
         }
         return parsed.stream()
