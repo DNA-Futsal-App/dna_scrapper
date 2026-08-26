@@ -31,6 +31,7 @@ public class FutsalScraperService {
     private final TeamsParser teamsParser;
     private final TeamDetailsParser teamDetailsParser;
     private final ScorersParser scorersParser;
+    private final FpfsCatalogService fpfsCatalogService;
 
     public FutsalScraperService(
             ScraperProperties properties,
@@ -41,7 +42,8 @@ public class FutsalScraperService {
             GamesParser gamesParser,
             TeamsParser teamsParser,
             TeamDetailsParser teamDetailsParser,
-            ScorersParser scorersParser
+            ScorersParser scorersParser,
+            FpfsCatalogService fpfsCatalogService
     ) {
         this.properties = properties;
         this.fetcher = fetcher;
@@ -52,11 +54,12 @@ public class FutsalScraperService {
         this.teamsParser = teamsParser;
         this.teamDetailsParser = teamDetailsParser;
         this.scorersParser = scorersParser;
+        this.fpfsCatalogService = fpfsCatalogService;
     }
 
     @Cacheable(cacheNames = "event-search", key = "#criteria.toString()")
     public List<EventMetadata> searchEvents(EventSearchCriteria criteria) {
-        List<Long> eventIds = searchBrowser.search(criteria);
+        List<Long> eventIds = fpfsCatalogService.searchEventIds(criteria);
         List<EventMetadata> result = new ArrayList<>();
         for (Long eventId : eventIds) {
             try {

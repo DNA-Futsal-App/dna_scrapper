@@ -1,6 +1,5 @@
 package br.com.dnafutsal.scraper.api;
 
-import br.com.dnafutsal.scraper.domain.CategoryTeams;
 import br.com.dnafutsal.scraper.service.FpfsCatalogService;
 import br.com.dnafutsal.scraper.service.FutsalScraperService;
 import jakarta.validation.constraints.Max;
@@ -44,14 +43,14 @@ public class CatalogController {
         return catalogService.categories(resolveSeason(season), division);
     }
 
-    @GetMapping
-    public List<CategoryTeams> teamsByCategory(
-            @RequestParam(required = false) @Min(2016) @Max(2100) Integer season,
-            @RequestParam String division,
-            @RequestParam String category
-    ) {
-        return service.categoryTeams(resolveSeason(season), division, category);
-    }
+//    @GetMapping
+//    public List<CategoryTeams> teamsByCategory(
+//            @RequestParam(required = false) @Min(2016) @Max(2100) Integer season,
+//            @RequestParam String division,
+//            @RequestParam String category
+//    ) {
+//        return service.categoryTeams(resolveSeason(season), division, category);
+//    }
 
     private int resolveSeason(Integer season) {
         return season == null ? LocalDate.now().getYear() : season;
