@@ -1,9 +1,11 @@
 package br.com.dnafutsal.scraper.api;
 
 import br.com.dnafutsal.scraper.domain.CategoryTeams;
+import br.com.dnafutsal.scraper.service.FpfsCatalogService;
 import br.com.dnafutsal.scraper.service.FutsalScraperService;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,25 +20,28 @@ import java.util.List;
 @RequestMapping("/api/v1")
 public class CatalogController {
 
+    @Autowired
     private final FutsalScraperService service;
+    private final FpfsCatalogService catalogService;
 
-    public CatalogController(FutsalScraperService service) {
+    public CatalogController(FutsalScraperService service, FpfsCatalogService fpfsCatalogService) {
         this.service = service;
+        this.catalogService = fpfsCatalogService;
     }
 
     @GetMapping({"/division", "/divisions"})
-    public List<String> divisions(
+    public List<CatalogOption> divisions(
             @RequestParam(required = false) @Min(2016) @Max(2100) Integer season
     ) {
-        return service.divisions(resolveSeason(season));
+        return catalogService.divisions(resolveSeason(season));
     }
 
     @GetMapping("/categories")
-    public List<String> categories(
+    public List<CatalogOption> categories(
             @RequestParam(required = false) @Min(2016) @Max(2100) Integer season,
             @RequestParam(required = false) String division
     ) {
-        return service.categories(resolveSeason(season), division);
+        return catalogService.categories(resolveSeason(season), division);
     }
 
     @GetMapping

@@ -1,7 +1,6 @@
 package br.com.dnafutsal.scraper.browser;
 
 import br.com.dnafutsal.scraper.config.ScraperProperties;
-import br.com.dnafutsal.scraper.domain.CatalogEntry;
 import br.com.dnafutsal.scraper.domain.EventSearchCriteria;
 import br.com.dnafutsal.scraper.exception.UpstreamAccessException;
 import com.microsoft.playwright.*;
@@ -12,8 +11,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-import java.text.Normalizer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 
 
@@ -30,7 +31,6 @@ public class EventSearchBrowser {
     private Playwright playwright;
     private Browser browser;
 
-    private static final String CAMPEONATO_PAULISTA = "Campeonato Paulista";
 
     public EventSearchBrowser(ScraperProperties properties) {
         this.properties = properties;
@@ -139,299 +139,6 @@ public class EventSearchBrowser {
         );
     }
 
-
-
-
-    public List<CatalogEntry> catalog(int season) {
-        if (!properties.browserSearchEnabled()) {
-            throw new IllegalStateException(
-                    "A pesquisa visual está desabilitada por configuração"
-            );
-        }
-
-        browserLock.lock();
-
-        try {
-            ensureStarted();
-
-            try (BrowserContext context = browser.newContext(
-                    new Browser.NewContextOptions()
-                            .setUserAgent(properties.userAgent())
-                            .setLocale("pt-BR")
-            )) {
-                Page page = context.newPage();
-
-                page.setDefaultTimeout(
-                        properties.requestTimeout().toMillis()
-                );
-
-                page.navigate(
-                        properties.baseUrl(),
-                        new Page.NavigateOptions()
-                                .setWaitUntil(WaitUntilState.DOMCONTENTLOADED)
-                );
-
-                List<Locator> selects = visibleSelects(page);
-
-                if (selects.size() < 4) {
-                    throw new UpstreamAccessException(
-                            "A estrutura dos filtros do site de origem mudou"
-                    );
-                }
-
-                Locator seasonSelect = selects.get(0);
-                Locator titleSelect = selects.get(1);
-                Locator divisionSelect = selects.get(2);
-                Locator categorySelect = selects.get(3);
-
-                /*
-                 * 1. Seleciona somente a temporada desejada.
-                 */
-                selectApproximate(
-                        seasonSelect,
-                        String.valueOf(season)
-                );
-
-                /*
-                 * Aguarda os títulos serem carregados.
-                 */
-                waitForSelectOptions(
-                        page,
-                        titleSelect,
-                        "Título"
-                );
-
-                /*
-                 * 2. Seleciona especificamente Campeonato Paulista.
-                 *
-                 * Não percorremos todos os campeonatos.
-                 */
-                selectApproximate(
-                        titleSelect,
-                        CAMPEONATO_PAULISTA
-                );
-
-                /*
-                 * Aguarda as divisões do Campeonato Paulista.
-                 */
-                waitForSelectOptions(
-                        page,
-                        divisionSelect,
-                        "Divisão"
-                );
-
-                /*
-                 * Fazemos uma cópia porque esse select poderá sofrer
-                 * alterações no DOM durante a navegação.
-                 */
-                List<SelectOption> divisions =
-                        List.copyOf(options(divisionSelect));
-
-                log.info(
-                        "Divisões encontradas no Campeonato Paulista. season={} total={}",
-                        season,
-                        divisions.size()
-                );
-
-                Map<String, CatalogEntry> entries =
-                        new LinkedHashMap<>();
-
-
-                for (SelectOption division : divisions) {
-
-
-                    String previousCategorySignature =
-                            optionSignature(categorySelect);
-
-                    selectByValue(
-                            divisionSelect,
-                            division.value()
-                    );
-
-
-                    waitForSelectOptionsChanged(
-                            page,
-                            categorySelect,
-                            previousCategorySignature,
-                            "Categoria da divisão " + division.label()
-                    );
-
-                    List<SelectOption> categories =
-                            List.copyOf(options(categorySelect));
-
-                    log.debug(
-                            "Categorias encontradas. division={} total={}",
-                            division.label(),
-                            categories.size()
-                    );
-
-                    for (SelectOption category : categories) {
-
-                        CatalogEntry entry =
-                                new CatalogEntry(
-                                        CAMPEONATO_PAULISTA,
-                                        division.label(),
-                                        category.label()
-                                );
-
-                        entries.putIfAbsent(
-                                catalogKey(entry),
-                                entry
-                        );
-                    }
-                }
-
-                List<CatalogEntry> result =
-                        List.copyOf(entries.values());
-
-                log.info(
-                        "Catálogo do Campeonato Paulista concluído. season={} divisions={} entries={}",
-                        season,
-                        divisions.size(),
-                        result.size()
-                );
-
-                return result;
-            }
-
-        } catch (PlaywrightException exception) {
-
-            log.error(
-                    "Falha Playwright ao ler catálogo do Campeonato Paulista. season={}",
-                    season,
-                    exception
-            );
-
-            throw new UpstreamAccessException(
-                    "Falha ao ler os filtros na página da FPFS",
-                    exception
-            );
-
-        } finally {
-            browserLock.unlock();
-        }
-    }
-
-    private void waitForSelectOptions(
-            Page page,
-            Locator select,
-            String selectName
-    ) {
-        long timeout =
-                Math.min(
-                        properties.requestTimeout().toMillis(),
-                        8_000
-                );
-
-        long deadline =
-                System.currentTimeMillis() + timeout;
-
-        PlaywrightException lastException = null;
-
-        while (System.currentTimeMillis() < deadline) {
-            try {
-                List<SelectOption> available =
-                        options(select);
-
-                if (!available.isEmpty()) {
-                    return;
-                }
-
-            } catch (PlaywrightException exception) {
-                lastException = exception;
-            }
-
-            page.waitForTimeout(100);
-        }
-
-        if (lastException != null) {
-            throw new UpstreamAccessException(
-                    "Falha ao aguardar opções do filtro: "
-                            + selectName,
-                    lastException
-            );
-        }
-
-        throw new UpstreamAccessException(
-                "Timeout aguardando opções do filtro: "
-                        + selectName
-        );
-    }
-
-    private void waitForSelectOptionsChanged(
-            Page page,
-            Locator select,
-            String previousSignature,
-            String selectName
-    ) {
-        long timeout =
-                Math.min(
-                        properties.requestTimeout().toMillis(),
-                        8_000
-                );
-
-        long deadline =
-                System.currentTimeMillis() + timeout;
-
-        while (System.currentTimeMillis() < deadline) {
-
-            String currentSignature =
-                    optionSignature(select);
-
-            /*
-             * O select:
-             *
-             * 1. precisa possuir opções válidas
-             * 2. precisa ser diferente do estado anterior
-             */
-            if (!currentSignature.isBlank()
-                    && !currentSignature.equals(previousSignature)) {
-
-                /*
-                 * Pequena confirmação de estabilidade.
-                 *
-                 * Evita ler o DOM no meio da atualização.
-                 */
-                page.waitForTimeout(150);
-
-                String confirmedSignature =
-                        optionSignature(select);
-
-                if (currentSignature.equals(confirmedSignature)) {
-                    return;
-                }
-            }
-
-            page.waitForTimeout(100);
-        }
-
-        throw new UpstreamAccessException(
-                "Timeout aguardando atualização do filtro: "
-                        + selectName
-        );
-    }
-
-    private String optionSignature(Locator select) {
-        List<SelectOption> values =
-                options(select);
-
-        if (values.isEmpty()) {
-            return "";
-        }
-
-        return values.stream()
-                .map(option ->
-                        option.value()
-                                + ":"
-                                + option.label()
-                )
-                .sorted()
-                .reduce(
-                        (left, right) ->
-                                left + "|" + right
-                )
-                .orElse("");
-    }
 
     private List<Locator> visibleSelects(Page page) {
         Locator all = page.locator("select:visible");
@@ -699,36 +406,6 @@ public class EventSearchBrowser {
 
 
 
-
-
-    @SuppressWarnings("unchecked")
-
-    private List<SelectOption> options(Locator select) {
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> rawOptions = (List<Map<String, Object>>) select.evaluate("""
-                select => Array.from(select.options).map(option => ({
-                  value: option.value || '',
-                  label: option.textContent || ''
-                }))
-                """);
-
-        List<SelectOption> result = new ArrayList<>();
-        for (Map<String, Object> rawOption : rawOptions) {
-            SelectOption option = new SelectOption(
-                    String.valueOf(rawOption.getOrDefault("value", "")).trim(),
-                    String.valueOf(rawOption.getOrDefault("label", "")).trim()
-            );
-            if (isRealOption(option)) {
-                result.add(option);
-            }
-        }
-        return result;
-    }
-
-    private void selectByValue(Locator select, String value) {
-        select.selectOption(value);
-    }
-
     private void selectApproximate(
             Locator select,
             String requestedText
@@ -761,29 +438,6 @@ public class EventSearchBrowser {
 
     private boolean hasText(String value) {
         return value != null && !value.isBlank();
-    }
-
-    private boolean isRealOption(SelectOption option) {
-        String normalized = normalize(option.label());
-        return !option.value().isBlank()
-                && !normalized.isBlank()
-                && !normalized.equals("todos")
-                && !normalized.equals("todas")
-                && !normalized.equals("selecione")
-                && !normalized.startsWith("selecione ");
-    }
-
-    private String catalogKey(CatalogEntry entry) {
-        return normalize(entry.title()) + "|" + normalize(entry.division()) + "|" + normalize(entry.category());
-    }
-
-    private String normalize(String value) {
-        return Normalizer.normalize(value == null ? "" : value, Normalizer.Form.NFD)
-                .replaceAll("\\p{M}", "")
-                .toLowerCase(Locale.ROOT)
-                .replaceAll("[^\\p{L}\\p{N}]+", " ")
-                .replaceAll("\\s+", " ")
-                .trim();
     }
 
     private void ensureStarted() {
@@ -820,6 +474,4 @@ public class EventSearchBrowser {
         }
     }
 
-    private record SelectOption(String value, String label) {
-    }
 }
