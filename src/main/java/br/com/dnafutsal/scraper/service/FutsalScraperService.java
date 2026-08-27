@@ -1,6 +1,5 @@
 package br.com.dnafutsal.scraper.service;
 
-import br.com.dnafutsal.scraper.browser.EventSearchBrowser;
 import br.com.dnafutsal.scraper.config.ScraperProperties;
 import br.com.dnafutsal.scraper.domain.*;
 import br.com.dnafutsal.scraper.http.PoliteHttpFetcher;
@@ -24,7 +23,7 @@ public class FutsalScraperService {
 
     private final ScraperProperties properties;
     private final PoliteHttpFetcher fetcher;
-    private final EventSearchBrowser searchBrowser;
+
     private final EventMetadataParser metadataParser;
     private final StandingsParser standingsParser;
     private final GamesParser gamesParser;
@@ -36,7 +35,6 @@ public class FutsalScraperService {
     public FutsalScraperService(
             ScraperProperties properties,
             PoliteHttpFetcher fetcher,
-            EventSearchBrowser searchBrowser,
             EventMetadataParser metadataParser,
             StandingsParser standingsParser,
             GamesParser gamesParser,
@@ -47,7 +45,6 @@ public class FutsalScraperService {
     ) {
         this.properties = properties;
         this.fetcher = fetcher;
-        this.searchBrowser = searchBrowser;
         this.metadataParser = metadataParser;
         this.standingsParser = standingsParser;
         this.gamesParser = gamesParser;

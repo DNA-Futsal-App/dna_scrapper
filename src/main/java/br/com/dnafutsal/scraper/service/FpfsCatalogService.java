@@ -1,20 +1,13 @@
 package br.com.dnafutsal.scraper.service;
 
+import br.com.dnafutsal.scraper.api.CatalogCategoryOption;
 import br.com.dnafutsal.scraper.api.CatalogOption;
 import br.com.dnafutsal.scraper.domain.EventSearchCriteria;
 import br.com.dnafutsal.scraper.domain.SeasonCatalog;
-import br.com.dnafutsal.scraper.exception.UpstreamAccessException;
-import br.com.dnafutsal.scraper.fpfs.FpfsCatalogClient;
-import br.com.dnafutsal.scraper.fpfs.dto.FpfsCategoryEventResponse;
-import br.com.dnafutsal.scraper.fpfs.dto.FpfsDivisionResponse;
-import br.com.dnafutsal.scraper.fpfs.dto.FpfsTitleResponse;
 import org.springframework.stereotype.Service;
 
 import java.text.Normalizer;
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.regex.Pattern;
 
 @Service
@@ -24,14 +17,11 @@ public class FpfsCatalogService {
             Pattern.compile("\\p{M}+");
 
     private final FpfsCatalogLoader loader;
-    private final FpfsCatalogClient client;
 
     public FpfsCatalogService(
-            FpfsCatalogLoader loader,
-            FpfsCatalogClient client
+            FpfsCatalogLoader loader
     ) {
         this.loader = loader;
-        this.client = client;
     }
 
     public List<CatalogOption> divisions(
@@ -51,50 +41,138 @@ public class FpfsCatalogService {
                 .toList();
     }
 
-    public List<CatalogOption> categories(
+    public List<CatalogCategoryOption> categories(
             int season,
-            String division
+            long divisionId
     ) {
         SeasonCatalog catalog =
                 loader.loadPaulista(season);
 
-        SeasonCatalog.Division selected =
+        SeasonCatalog.Division division =
                 findDivision(
                         catalog,
-                        division
+                        divisionId
                 );
 
-        return selected.categories()
+        return division.categories()
                 .stream()
                 .map(category ->
-                        new CatalogOption(
+                        new CatalogCategoryOption(
                                 category.id(),
-                                category.name()
+                                category.name(),
+                                category.eventId()
                         )
                 )
                 .toList();
     }
 
-    private SeasonCatalog.Division findDivision(
-            SeasonCatalog catalog,
-            String requested
+    public List<Long> searchEventIds(
+            EventSearchCriteria criteria
     ) {
-        String normalized =
-                normalize(requested);
+        if (criteria.season() == null) {
+            throw new IllegalArgumentException(
+                    "A temporada é obrigatória"
+            );
+        }
+
+        SeasonCatalog catalog =
+                loader.loadPaulista(
+                        criteria.season()
+                );
+
+        if (
+                hasText(criteria.title()) &&
+                        !sameTitle(
+                                catalog.titleName(),
+                                criteria.title()
+                        )
+        ) {
+            return List.of();
+        }
 
         return catalog.divisions()
                 .stream()
                 .filter(division ->
-                        normalize(division.name())
-                                .equals(normalized)
+                        !hasText(criteria.division())
+                                || sameName(
+                                division.name(),
+                                criteria.division()
+                        )
+                )
+                .flatMap(division ->
+                        division.categories()
+                                .stream()
+                )
+                .filter(category ->
+                        !hasText(criteria.category())
+                                || sameName(
+                                category.name(),
+                                criteria.category()
+                        )
+                )
+                .map(
+                        SeasonCatalog.Category::eventId
+                )
+                .distinct()
+                .toList();
+    }
+
+    private SeasonCatalog.Division findDivision(
+            SeasonCatalog catalog,
+            long divisionId
+    ) {
+        return catalog.divisions()
+                .stream()
+                .filter(division ->
+                        division.id() == divisionId
                 )
                 .findFirst()
                 .orElseThrow(() ->
                         new IllegalArgumentException(
                                 "Divisão não encontrada: "
-                                        + requested
+                                        + divisionId
                         )
                 );
+    }
+
+    private boolean sameName(
+            String first,
+            String second
+    ) {
+        return normalize(first)
+                .equals(
+                        normalize(second)
+                );
+    }
+
+    private boolean sameTitle(
+            String first,
+            String second
+    ) {
+        return normalizeTitle(first)
+                .equals(
+                        normalizeTitle(second)
+                );
+    }
+
+    private String normalizeTitle(
+            String value
+    ) {
+        String normalized =
+                normalize(value);
+
+        if (
+                normalized.startsWith(
+                        "campeonato "
+                )
+        ) {
+            normalized =
+                    normalized.substring(
+                            "campeonato ".length()
+                    );
+        }
+
+        return normalized;
     }
 
     private String normalize(
@@ -115,200 +193,6 @@ public class FpfsCatalogService {
                 .replaceAll("")
                 .toLowerCase()
                 .replaceAll("\\s+", " ");
-    }
-
-    public List<Long> searchEventIds(
-            EventSearchCriteria criteria
-    ) {
-        if (criteria.season() == null) {
-            throw new IllegalArgumentException(
-                    "A temporada é obrigatória"
-            );
-        }
-
-        List<FpfsTitleResponse> titles =
-                activeTitles(
-                        criteria.season(),
-                        criteria.title()
-                );
-
-        Set<Long> eventIds =
-                new LinkedHashSet<>();
-
-        for (FpfsTitleResponse title : titles) {
-
-            List<FpfsDivisionResponse> divisions =
-                    activeDivisions(
-                            criteria.season(),
-                            title.id(),
-                            criteria.division()
-                    );
-
-            for (FpfsDivisionResponse division :
-                    divisions) {
-
-                List<FpfsCategoryEventResponse> events =
-                        client.categoryEvents(
-                                criteria.season(),
-                                title.id(),
-                                division.id()
-                        );
-
-                for (FpfsCategoryEventResponse event :
-                        events) {
-
-                    if (!active(event.status())) {
-                        continue;
-                    }
-
-                    if (event.category() == null) {
-                        continue;
-                    }
-
-                    if (!active(
-                            event.category().status()
-                    )) {
-                        continue;
-                    }
-
-                    if (hasText(criteria.category())
-                            && !sameName(
-                            event.category().name(),
-                            criteria.category()
-                    )) {
-
-                        continue;
-                    }
-
-                    eventIds.add(
-                            event.eventId()
-                    );
-                }
-            }
-        }
-
-        return List.copyOf(eventIds);
-    }
-
-    private List<FpfsTitleResponse> activeTitles(
-            int season,
-            String requestedTitle
-    ) {
-        List<FpfsTitleResponse> active =
-                client.titles(season)
-                        .stream()
-                        .filter(title ->
-                                active(title.status())
-                        )
-                        .toList();
-
-        if (!hasText(requestedTitle)) {
-            return active;
-        }
-
-        String requested =
-                normalizeTitle(
-                        requestedTitle
-                );
-
-        /*
-         * Primeiro tenta match exato.
-         *
-         * Isso evita:
-         *
-         * Paulista
-         *
-         * casar com:
-         *
-         * Copa Paulista
-         * Paulista Feminino
-         */
-        List<FpfsTitleResponse> exact =
-                active.stream()
-                        .filter(title ->
-                                normalizeTitle(
-                                        title.name()
-                                ).equals(requested)
-                        )
-                        .toList();
-
-        if (!exact.isEmpty()) {
-            return exact;
-        }
-
-        return active.stream()
-                .filter(title ->
-                        normalizeTitle(
-                                title.name()
-                        ).contains(requested)
-                )
-                .toList();
-    }
-
-    private List<FpfsDivisionResponse> activeDivisions(
-            int season,
-            long titleId,
-            String requestedDivision
-    ) {
-        List<FpfsDivisionResponse> active =
-                client.divisions(
-                                season,
-                                titleId
-                        )
-                        .stream()
-                        .filter(division ->
-                                active(division.status())
-                        )
-                        .toList();
-
-        if (!hasText(requestedDivision)) {
-            return active;
-        }
-
-        return active.stream()
-                .filter(division ->
-                        sameName(
-                                division.name(),
-                                requestedDivision
-                        )
-                )
-                .toList();
-    }
-
-    private boolean active(
-            String status
-    ) {
-        return status == null
-                || status.isBlank()
-                || "A".equalsIgnoreCase(status);
-    }
-
-    private boolean sameName(
-            String first,
-            String second
-    ) {
-        return normalize(first)
-                .equals(
-                        normalize(second)
-                );
-    }
-
-    private String normalizeTitle(
-            String value
-    ) {
-        String normalized =
-                normalize(value);
-
-        if (normalized.startsWith(
-                "campeonato "
-        )) {
-            normalized =
-                    normalized.substring(
-                            "campeonato ".length()
-                    );
-        }
-
-        return normalized;
     }
 
     private boolean hasText(
