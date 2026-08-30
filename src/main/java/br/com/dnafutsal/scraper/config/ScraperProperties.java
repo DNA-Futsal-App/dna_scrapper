@@ -14,7 +14,6 @@ public record ScraperProperties(
         Duration requestTimeout,
         Duration minimumDelay,
         int maxRetries,
-        boolean browserSearchEnabled,
         boolean exposePersonalData,
         boolean respectRobotsTxt
 ) {

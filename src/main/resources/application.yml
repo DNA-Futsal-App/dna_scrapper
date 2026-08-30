@@ -1,5 +1,5 @@
 server:
-  port: ${PORT:8080}
+  port: ${PORT:8082}
   error:
     include-message: never
 
@@ -32,11 +32,9 @@ dna-futsal:
     request-timeout: 20s
     minimum-delay: 900ms
     max-retries: 2
-    browser-search-enabled: ${BROWSER_SEARCH_ENABLED:true}
     expose-personal-data: ${EXPOSE_PERSONAL_DATA:true}
     respect-robots-txt: ${RESPECT_ROBOTS_TXT:true}
 
   api:
-    api-key: ${DNA_FUTSAL_API_KEY:}
     requests-per-minute: ${API_REQUESTS_PER_MINUTE:60}
     allowed-origins: ${ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}

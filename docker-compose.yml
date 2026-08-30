@@ -2,11 +2,9 @@ services:
   scraper-api:
     build: .
     init: true
-    ipc: host
     ports:
       - "8080:8080"
     environment:
-      DNA_FUTSAL_API_KEY: "troque-esta-chave"
       API_REQUESTS_PER_MINUTE: "60"
       ALLOWED_ORIGINS: "http://localhost:3000,http://localhost:5173"
       EXPOSE_PERSONAL_DATA: "false"
