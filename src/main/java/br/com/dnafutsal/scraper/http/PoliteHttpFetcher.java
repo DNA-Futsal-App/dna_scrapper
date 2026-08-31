@@ -3,8 +3,6 @@ package br.com.dnafutsal.scraper.http;
 import br.com.dnafutsal.scraper.config.ScraperProperties;
 import br.com.dnafutsal.scraper.exception.ResourceNotFoundException;
 import br.com.dnafutsal.scraper.exception.UpstreamAccessException;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -37,11 +35,6 @@ public class PoliteHttpFetcher {
         hosts.add(URI.create(properties.baseUrl()).getHost().toLowerCase(Locale.ROOT));
         hosts.add(URI.create(properties.matchSheetBaseUrl()).getHost().toLowerCase(Locale.ROOT));
         this.allowedHosts = Set.copyOf(hosts);
-    }
-
-    public Document getDocument(String url) {
-        String html = getText(url);
-        return Jsoup.parse(html, url);
     }
 
     public String getText(String url) {

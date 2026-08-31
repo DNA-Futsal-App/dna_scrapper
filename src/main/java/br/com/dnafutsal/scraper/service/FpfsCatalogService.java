@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import java.text.Normalizer;
 import java.util.List;
+import java.util.Locale;
 import java.util.regex.Pattern;
 
 @Service
@@ -191,7 +192,9 @@ public class FpfsCatalogService {
         return DIACRITICS
                 .matcher(normalized)
                 .replaceAll("")
-                .toLowerCase()
+                .toLowerCase(
+                        Locale.ROOT
+                )
                 .replaceAll("\\s+", " ");
     }
 

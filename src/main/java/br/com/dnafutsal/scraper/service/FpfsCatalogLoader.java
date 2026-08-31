@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Pattern;
 
@@ -58,10 +59,20 @@ public class FpfsCatalogLoader {
         List<SeasonCatalog.Division> divisions =
                 new ArrayList<>();
 
-        for (FpfsDivisionResponse division :
-                fpfsDivisions) {
-
-            if (!isActive(division.status())) {
+        for (
+                FpfsDivisionResponse division :
+                fpfsDivisions
+        ) {
+            if (
+                    division == null
+                            || division.id() <= 0
+                            || !hasText(
+                            division.name()
+                    )
+                            || !isActive(
+                            division.status()
+                    )
+            ) {
                 continue;
             }
 
@@ -75,28 +86,27 @@ public class FpfsCatalogLoader {
             Map<Long, SeasonCatalog.Category> categories =
                     new LinkedHashMap<>();
 
-            for (FpfsCategoryEventResponse event :
-                    events) {
-
-                if (!isActive(event.status())) {
-                    continue;
-                }
-
-                if (event.divisionId()
-                        != division.id()) {
+            for (
+                    FpfsCategoryEventResponse event :
+                    events
+            ) {
+                if (
+                        !isUsableEvent(
+                                event,
+                                season,
+                                paulista.id(),
+                                division.id()
+                        )
+                ) {
                     continue;
                 }
 
                 FpfsCategoryResponse category =
                         event.category();
 
-                if (category == null
-                        || !isActive(category.status())) {
-                    continue;
-                }
-
                 int order =
-                        category.executionOrder() == null
+                        category.executionOrder()
+                                == null
                                 ? Integer.MAX_VALUE
                                 : category.executionOrder();
 
@@ -104,7 +114,9 @@ public class FpfsCatalogLoader {
                         category.id(),
                         new SeasonCatalog.Category(
                                 category.id(),
-                                clean(category.name()),
+                                clean(
+                                        category.name()
+                                ),
                                 order,
                                 event.eventId()
                         )
@@ -126,10 +138,20 @@ public class FpfsCatalogLoader {
                             )
                             .toList();
 
+            /*
+             * Uma divisão sem nenhum evento válido
+             * não é selecionável pelo produto.
+             */
+            if (ordered.isEmpty()) {
+                continue;
+            }
+
             divisions.add(
                     new SeasonCatalog.Division(
                             division.id(),
-                            clean(division.name()),
+                            clean(
+                                    division.name()
+                            ),
                             ordered
                     )
             );
@@ -145,8 +167,12 @@ public class FpfsCatalogLoader {
         return new SeasonCatalog(
                 season,
                 paulista.id(),
-                clean(paulista.name()),
-                List.copyOf(divisions)
+                clean(
+                        paulista.name()
+                ),
+                List.copyOf(
+                        divisions
+                )
         );
     }
 
@@ -156,13 +182,25 @@ public class FpfsCatalogLoader {
         return client.titles(season)
                 .stream()
                 .filter(title ->
-                        isActive(title.status())
+                        title != null
+                                && title.id() > 0
+                                && hasText(
+                                title.name()
+                        )
                 )
                 .filter(title ->
-                        normalize(title.name())
-                                .equals(
-                                        normalize(PAULISTA)
+                        isActive(
+                                title.status()
+                        )
+                )
+                .filter(title ->
+                        normalize(
+                                title.name()
+                        ).equals(
+                                normalize(
+                                        PAULISTA
                                 )
+                        )
                 )
                 .findFirst()
                 .orElseThrow(() ->
@@ -173,12 +211,55 @@ public class FpfsCatalogLoader {
                 );
     }
 
+    private boolean isUsableEvent(
+            FpfsCategoryEventResponse event,
+            int season,
+            long titleId,
+            long divisionId
+    ) {
+        if (
+                event == null
+                        || event.eventId() <= 0
+                        || event.titleId() != titleId
+                        || event.divisionId() != divisionId
+                        || event.season() != season
+                        || !isActive(
+                        event.status()
+                )
+        ) {
+            return false;
+        }
+
+        FpfsCategoryResponse category =
+                event.category();
+
+        return category != null
+                && category.id() > 0
+                && event.categoryId()
+                == category.id()
+                && hasText(
+                category.name()
+        )
+                && isActive(
+                category.status()
+        );
+    }
+
     private boolean isActive(
             String status
     ) {
         return status == null
                 || status.isBlank()
-                || "A".equalsIgnoreCase(status);
+                || "A".equalsIgnoreCase(
+                status
+        );
+    }
+
+    private boolean hasText(
+            String value
+    ) {
+        return value != null
+                && !value.isBlank();
     }
 
     private String clean(
@@ -187,7 +268,10 @@ public class FpfsCatalogLoader {
         return value == null
                 ? ""
                 : value.trim()
-                .replaceAll("\\s+", " ");
+                .replaceAll(
+                        "\\s+",
+                        " "
+                );
     }
 
     private String normalize(
@@ -200,8 +284,12 @@ public class FpfsCatalogLoader {
                 );
 
         return DIACRITICS
-                .matcher(normalized)
+                .matcher(
+                        normalized
+                )
                 .replaceAll("")
-                .toLowerCase();
+                .toLowerCase(
+                        Locale.ROOT
+                );
     }
 }

@@ -7,6 +7,7 @@ import br.com.dnafutsal.scraper.fpfs.dto.FpfsDivisionResponse;
 import br.com.dnafutsal.scraper.fpfs.dto.FpfsTitleResponse;
 import br.com.dnafutsal.scraper.fpfs.dto.FpfsTitlesResponse;
 import com.fasterxml.jackson.databind.JsonNode;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
@@ -24,7 +25,26 @@ public class FpfsCatalogClient {
 
     private final RestClient client;
 
+    @Autowired
     public FpfsCatalogClient(
+            RestClient.Builder builder,
+            ScraperProperties properties
+    ) {
+        this(
+                createClient(
+                        builder,
+                        properties
+                )
+        );
+    }
+
+    FpfsCatalogClient(
+            RestClient client
+    ) {
+        this.client = client;
+    }
+
+    private static RestClient createClient(
             RestClient.Builder builder,
             ScraperProperties properties
     ) {
@@ -39,9 +59,13 @@ public class FpfsCatalogClient {
                 properties.requestTimeout()
         );
 
-        this.client = builder.clone()
-                .requestFactory(requestFactory)
-                .baseUrl(properties.baseUrl())
+        return builder.clone()
+                .requestFactory(
+                        requestFactory
+                )
+                .baseUrl(
+                        properties.baseUrl()
+                )
                 .build();
     }
 
