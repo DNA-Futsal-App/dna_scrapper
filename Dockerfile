@@ -29,8 +29,4 @@ EXPOSE 8080
 
 ENV JAVA_OPTS="-XX:InitialRAMPercentage=20 -XX:MaxRAMPercentage=65 -XX:+ExitOnOutOfMemoryError"
 
-ENTRYPOINT [
-  "sh",
-  "-c",
-  "exec java $JAVA_OPTS -jar /app/app.jar"
-]
+ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar /app/app.jar"]
