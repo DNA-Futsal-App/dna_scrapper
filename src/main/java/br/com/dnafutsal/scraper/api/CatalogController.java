@@ -32,13 +32,20 @@ public class CatalogController {
             @RequestParam(required = false)
             @Min(2016)
             @Max(2100)
-            Integer season
+            Integer season,
+
+            @RequestParam(
+                    defaultValue = "Paulista"
+            )
+            String title
     ) {
         return catalogService.divisions(
-                resolveSeason(season)
+                resolveSeason(
+                        season
+                ),
+                title
         );
     }
-
     @GetMapping("/categories")
     public List<CatalogCategoryOption> categories(
             @RequestParam(required = false)
@@ -46,12 +53,20 @@ public class CatalogController {
             @Max(2100)
             Integer season,
 
+            @RequestParam(
+                    defaultValue = "Paulista"
+            )
+            String title,
+
             @RequestParam
             @Positive
             long divisionId
     ) {
         return catalogService.categories(
-                resolveSeason(season),
+                resolveSeason(
+                        season
+                ),
+                title,
                 divisionId
         );
     }

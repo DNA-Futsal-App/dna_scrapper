@@ -41,19 +41,23 @@ public class FpfsCatalogLoader {
 
     @Cacheable(
             cacheNames = CACHE_NAME,
-            key = "#season",
+            key = "#season + ':' + #titleName",
             sync = true
     )
     public SeasonCatalog loadPaulista(
-            int season
+            int season,
+            String titleName
     ) {
-        FpfsTitleResponse paulista =
-                findPaulista(season);
+        FpfsTitleResponse title =
+                findPaulista(
+                        season,
+                        titleName
+                );
 
         List<FpfsDivisionResponse> fpfsDivisions =
                 client.divisions(
                         season,
-                        paulista.id()
+                        title.id()
                 );
 
         List<SeasonCatalog.Division> divisions =
@@ -79,7 +83,7 @@ public class FpfsCatalogLoader {
             List<FpfsCategoryEventResponse> events =
                     client.categoryEvents(
                             season,
-                            paulista.id(),
+                            title.id(),
                             division.id()
                     );
 
@@ -94,7 +98,7 @@ public class FpfsCatalogLoader {
                         !isUsableEvent(
                                 event,
                                 season,
-                                paulista.id(),
+                                title.id(),
                                 division.id()
                         )
                 ) {
@@ -138,10 +142,6 @@ public class FpfsCatalogLoader {
                             )
                             .toList();
 
-            /*
-             * Uma divisão sem nenhum evento válido
-             * não é selecionável pelo produto.
-             */
             if (ordered.isEmpty()) {
                 continue;
             }
@@ -166,9 +166,9 @@ public class FpfsCatalogLoader {
 
         return new SeasonCatalog(
                 season,
-                paulista.id(),
+                title.id(),
                 clean(
-                        paulista.name()
+                        title.name()
                 ),
                 List.copyOf(
                         divisions
@@ -177,9 +177,12 @@ public class FpfsCatalogLoader {
     }
 
     private FpfsTitleResponse findPaulista(
-            int season
+            int season,
+            String expectedTitle
     ) {
-        return client.titles(season)
+        return client.titles(
+                        season
+                )
                 .stream()
                 .filter(title ->
                         title != null
@@ -197,15 +200,17 @@ public class FpfsCatalogLoader {
                         normalize(
                                 title.name()
                         ).equals(
-                                normalize(
-                                        PAULISTA
+                                normalizeTitle(
+                                        expectedTitle
                                 )
                         )
                 )
                 .findFirst()
                 .orElseThrow(() ->
                         new UpstreamAccessException(
-                                "O campeonato Paulista não foi encontrado na FPFS para a temporada "
+                                "O campeonato "
+                                        + expectedTitle
+                                        + " não foi encontrado na FPFS para a temporada "
                                         + season
                         )
                 );
@@ -291,5 +296,27 @@ public class FpfsCatalogLoader {
                 .toLowerCase(
                         Locale.ROOT
                 );
+    }
+
+    private String normalizeTitle(
+            String value
+    ) {
+        String normalized =
+                normalize(
+                        value
+                );
+
+        if (
+                normalized.startsWith(
+                        "campeonato "
+                )
+        ) {
+            normalized =
+                    normalized.substring(
+                            "campeonato ".length()
+                    );
+        }
+
+        return normalized;
     }
 }

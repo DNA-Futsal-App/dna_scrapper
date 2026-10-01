@@ -25,7 +25,8 @@ class FpfsCatalogServiceTest {
     void exposesRealDivisionIds() {
         when(
                 loader.loadPaulista(
-                        2026
+                        2026,
+                        "Paulista"
                 )
         ).thenReturn(
                 catalog()
@@ -33,7 +34,8 @@ class FpfsCatalogServiceTest {
 
         var result =
                 service.divisions(
-                        2026
+                        2026,
+                        "Paulista"
                 );
 
         assertThat(result)
@@ -61,7 +63,8 @@ class FpfsCatalogServiceTest {
     void exposesCategoryIdAndEventIdTogether() {
         when(
                 loader.loadPaulista(
-                        2026
+                        2026,
+                        "Paulista"
                 )
         ).thenReturn(
                 catalog()
@@ -70,6 +73,7 @@ class FpfsCatalogServiceTest {
         var result =
                 service.categories(
                         2026,
+                        "Paulista",
                         3
                 );
 
@@ -97,7 +101,8 @@ class FpfsCatalogServiceTest {
     void searchesDivisionAndCategoryWithoutTitle() {
         when(
                 loader.loadPaulista(
-                        2026
+                        2026,
+                        "Paulista"
                 )
         ).thenReturn(
                 catalog()
@@ -123,7 +128,8 @@ class FpfsCatalogServiceTest {
     void categoryCanBeFilteredWithoutExplicitDivisionOrTitle() {
         when(
                 loader.loadPaulista(
-                        2026
+                        2026,
+                        "Paulista"
                 )
         ).thenReturn(
                 catalog()
@@ -150,7 +156,8 @@ class FpfsCatalogServiceTest {
     void acceptsCampeonatoPaulistaAsTitleAlias() {
         when(
                 loader.loadPaulista(
-                        2026
+                        2026,
+                        "Paulista"
                 )
         ).thenReturn(
                 catalog()
@@ -178,7 +185,8 @@ class FpfsCatalogServiceTest {
     void rejectsCopaPaulista() {
         when(
                 loader.loadPaulista(
-                        2026
+                        2026,
+                        "Paulista"
                 )
         ).thenReturn(
                 catalog()
@@ -202,7 +210,8 @@ class FpfsCatalogServiceTest {
     void rejectsPaulistaFeminino() {
         when(
                 loader.loadPaulista(
-                        2026
+                        2026,
+                        "Paulista"
                 )
         ).thenReturn(
                 catalog()
@@ -226,7 +235,8 @@ class FpfsCatalogServiceTest {
     void rejectsUnknownDivisionId() {
         when(
                 loader.loadPaulista(
-                        2026
+                        2026,
+                        "Paulista"
                 )
         ).thenReturn(
                 catalog()
@@ -235,6 +245,7 @@ class FpfsCatalogServiceTest {
         assertThatThrownBy(
                 () -> service.categories(
                         2026,
+                        "Paulista",
                         999
                 )
         )
@@ -277,7 +288,8 @@ class FpfsCatalogServiceTest {
 
         when(
                 loader.loadPaulista(
-                        2026
+                        2026,
+                        "Paulista"
                 )
         ).thenReturn(
                 custom

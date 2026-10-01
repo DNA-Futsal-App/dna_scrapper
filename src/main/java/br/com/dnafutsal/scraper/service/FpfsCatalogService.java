@@ -26,10 +26,14 @@ public class FpfsCatalogService {
     }
 
     public List<CatalogOption> divisions(
-            int season
+            int season,
+            String title
     ) {
         SeasonCatalog catalog =
-                loader.loadPaulista(season);
+                loader.loadPaulista(
+                        season,
+                        title
+                );
 
         return catalog.divisions()
                 .stream()
@@ -44,10 +48,14 @@ public class FpfsCatalogService {
 
     public List<CatalogCategoryOption> categories(
             int season,
+            String title,
             long divisionId
     ) {
         SeasonCatalog catalog =
-                loader.loadPaulista(season);
+                loader.loadPaulista(
+                        season,
+                        title
+                );
 
         SeasonCatalog.Division division =
                 findDivision(
@@ -76,9 +84,17 @@ public class FpfsCatalogService {
             );
         }
 
+        String title =
+                hasText(
+                        criteria.title()
+                )
+                        ? criteria.title()
+                        : "Paulista";
+
         SeasonCatalog catalog =
                 loader.loadPaulista(
-                        criteria.season()
+                        criteria.season(),
+                        title
                 );
 
         if (

@@ -96,7 +96,8 @@ class FpfsCatalogLoaderTest {
 
         var result =
                 loader.loadPaulista(
-                        2026
+                        2026,
+                        "Paulista"
                 );
 
         assertThat(
@@ -170,7 +171,8 @@ class FpfsCatalogLoaderTest {
 
         assertThatThrownBy(
                 () -> loader.loadPaulista(
-                        2026
+                        2026,
+                        "Paulista"
                 )
         )
                 .isInstanceOf(
@@ -404,7 +406,8 @@ class FpfsCatalogLoaderTest {
 
         var result =
                 loader.loadPaulista(
-                        2026
+                        2026,
+                        "Paulista"
                 );
 
         assertThat(
