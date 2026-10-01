@@ -29,7 +29,7 @@ class FpfsCatalogServiceTest {
                         "Paulista"
                 )
         ).thenReturn(
-                catalog()
+                maleCatalog()
         );
 
         var result =
@@ -40,8 +40,7 @@ class FpfsCatalogServiceTest {
 
         assertThat(result)
                 .extracting(
-                        item ->
-                                item.id()
+                        item -> item.id()
                 )
                 .containsExactly(
                         3L,
@@ -50,12 +49,47 @@ class FpfsCatalogServiceTest {
 
         assertThat(result)
                 .extracting(
-                        item ->
-                                item.name()
+                        item -> item.name()
                 )
                 .containsExactly(
                         "A1",
                         "A2"
+                );
+    }
+
+    @Test
+    void exposesFemaleDivisions() {
+        when(
+                loader.loadPaulista(
+                        2026,
+                        "Paulista Feminino"
+                )
+        ).thenReturn(
+                femaleCatalog()
+        );
+
+        var result =
+                service.divisions(
+                        2026,
+                        "Paulista Feminino"
+                );
+
+        assertThat(result)
+                .extracting(
+                        item -> item.id()
+                )
+                .containsExactly(
+                        10L,
+                        11L
+                );
+
+        assertThat(result)
+                .extracting(
+                        item -> item.name()
+                )
+                .containsExactly(
+                        "A1 Feminino",
+                        "A2 Feminino"
                 );
     }
 
@@ -67,7 +101,7 @@ class FpfsCatalogServiceTest {
                         "Paulista"
                 )
         ).thenReturn(
-                catalog()
+                maleCatalog()
         );
 
         var result =
@@ -82,19 +116,73 @@ class FpfsCatalogServiceTest {
 
         assertThat(
                 result.get(0).id()
-        ).isEqualTo(7);
+        ).isEqualTo(
+                7
+        );
 
         assertThat(
                 result.get(0).eventId()
-        ).isEqualTo(917);
+        ).isEqualTo(
+                917
+        );
 
         assertThat(
                 result.get(1).id()
-        ).isEqualTo(8);
+        ).isEqualTo(
+                8
+        );
 
         assertThat(
                 result.get(1).eventId()
-        ).isEqualTo(918);
+        ).isEqualTo(
+                918
+        );
+    }
+
+    @Test
+    void exposesFemaleCategoryIdAndEventIdTogether() {
+        when(
+                loader.loadPaulista(
+                        2026,
+                        "Paulista Feminino"
+                )
+        ).thenReturn(
+                femaleCatalog()
+        );
+
+        var result =
+                service.categories(
+                        2026,
+                        "Paulista Feminino",
+                        10
+                );
+
+        assertThat(result)
+                .hasSize(2);
+
+        assertThat(
+                result.get(0).id()
+        ).isEqualTo(
+                20
+        );
+
+        assertThat(
+                result.get(0).eventId()
+        ).isEqualTo(
+                926
+        );
+
+        assertThat(
+                result.get(1).id()
+        ).isEqualTo(
+                21
+        );
+
+        assertThat(
+                result.get(1).eventId()
+        ).isEqualTo(
+                927
+        );
     }
 
     @Test
@@ -105,7 +193,7 @@ class FpfsCatalogServiceTest {
                         "Paulista"
                 )
         ).thenReturn(
-                catalog()
+                maleCatalog()
         );
 
         var result =
@@ -132,7 +220,7 @@ class FpfsCatalogServiceTest {
                         "Paulista"
                 )
         ).thenReturn(
-                catalog()
+                maleCatalog()
         );
 
         var result =
@@ -157,10 +245,10 @@ class FpfsCatalogServiceTest {
         when(
                 loader.loadPaulista(
                         2026,
-                        "Paulista"
+                        "Campeonato Paulista"
                 )
         ).thenReturn(
-                catalog()
+                maleCatalog()
         );
 
         var result =
@@ -182,14 +270,72 @@ class FpfsCatalogServiceTest {
     }
 
     @Test
-    void rejectsCopaPaulista() {
+    void acceptsPaulistaFeminino() {
         when(
                 loader.loadPaulista(
                         2026,
-                        "Paulista"
+                        "Paulista Feminino"
                 )
         ).thenReturn(
-                catalog()
+                femaleCatalog()
+        );
+
+        var result =
+                service.searchEventIds(
+                        new EventSearchCriteria(
+                                2026,
+                                "Paulista Feminino",
+                                null,
+                                null
+                        )
+                );
+
+        assertThat(result)
+                .containsExactly(
+                        926L,
+                        927L,
+                        928L
+                );
+    }
+
+    @Test
+    void acceptsCampeonatoPaulistaFemininoAsTitleAlias() {
+        when(
+                loader.loadPaulista(
+                        2026,
+                        "Campeonato Paulista Feminino"
+                )
+        ).thenReturn(
+                femaleCatalog()
+        );
+
+        var result =
+                service.searchEventIds(
+                        new EventSearchCriteria(
+                                2026,
+                                "Campeonato Paulista Feminino",
+                                null,
+                                null
+                        )
+                );
+
+        assertThat(result)
+                .containsExactly(
+                        926L,
+                        927L,
+                        928L
+                );
+    }
+
+    @Test
+    void rejectsCopaPaulistaWhenReturnedCatalogDoesNotMatchRequestedTitle() {
+        when(
+                loader.loadPaulista(
+                        2026,
+                        "Copa Paulista"
+                )
+        ).thenReturn(
+                maleCatalog()
         );
 
         var result =
@@ -207,14 +353,14 @@ class FpfsCatalogServiceTest {
     }
 
     @Test
-    void rejectsPaulistaFeminino() {
+    void filtersFemaleDivisionAndCategory() {
         when(
                 loader.loadPaulista(
                         2026,
-                        "Paulista"
+                        "Paulista Feminino"
                 )
         ).thenReturn(
-                catalog()
+                femaleCatalog()
         );
 
         var result =
@@ -222,13 +368,15 @@ class FpfsCatalogServiceTest {
                         new EventSearchCriteria(
                                 2026,
                                 "Paulista Feminino",
-                                null,
-                                null
+                                "A1 Feminino",
+                                "Principal"
                         )
                 );
 
         assertThat(result)
-                .isEmpty();
+                .containsExactly(
+                        926L
+                );
     }
 
     @Test
@@ -239,15 +387,43 @@ class FpfsCatalogServiceTest {
                         "Paulista"
                 )
         ).thenReturn(
-                catalog()
+                maleCatalog()
         );
 
         assertThatThrownBy(
-                () -> service.categories(
-                        2026,
-                        "Paulista",
-                        999
+                () ->
+                        service.categories(
+                                2026,
+                                "Paulista",
+                                999
+                        )
+        )
+                .isInstanceOf(
+                        IllegalArgumentException.class
                 )
+                .hasMessageContaining(
+                        "Divisão não encontrada"
+                );
+    }
+
+    @Test
+    void rejectsUnknownFemaleDivisionId() {
+        when(
+                loader.loadPaulista(
+                        2026,
+                        "Paulista Feminino"
+                )
+        ).thenReturn(
+                femaleCatalog()
+        );
+
+        assertThatThrownBy(
+                () ->
+                        service.categories(
+                                2026,
+                                "Paulista Feminino",
+                                999
+                        )
         )
                 .isInstanceOf(
                         IllegalArgumentException.class
@@ -311,7 +487,61 @@ class FpfsCatalogServiceTest {
                 );
     }
 
-    private SeasonCatalog catalog() {
+    @Test
+    void removesDuplicateFemaleEventIdsFromSearchResult() {
+        SeasonCatalog custom =
+                new SeasonCatalog(
+                        2026,
+                        24,
+                        "Paulista Feminino",
+                        List.of(
+                                new SeasonCatalog.Division(
+                                        10,
+                                        "A1 Feminino",
+                                        List.of(
+                                                new SeasonCatalog.Category(
+                                                        20,
+                                                        "Principal",
+                                                        1,
+                                                        926
+                                                ),
+                                                new SeasonCatalog.Category(
+                                                        21,
+                                                        "Outra",
+                                                        2,
+                                                        926
+                                                )
+                                        )
+                                )
+                        )
+                );
+
+        when(
+                loader.loadPaulista(
+                        2026,
+                        "Paulista Feminino"
+                )
+        ).thenReturn(
+                custom
+        );
+
+        var result =
+                service.searchEventIds(
+                        new EventSearchCriteria(
+                                2026,
+                                "Paulista Feminino",
+                                null,
+                                null
+                        )
+                );
+
+        assertThat(result)
+                .containsExactly(
+                        926L
+                );
+    }
+
+    private SeasonCatalog maleCatalog() {
         return new SeasonCatalog(
                 2026,
                 16,
@@ -345,6 +575,47 @@ class FpfsCatalogServiceTest {
                                                 "Principal",
                                                 1,
                                                 920
+                                        )
+                                )
+                        )
+                )
+        );
+    }
+
+    private SeasonCatalog femaleCatalog() {
+        return new SeasonCatalog(
+                2026,
+                24,
+                "Paulista Feminino",
+                List.of(
+                        new SeasonCatalog.Division(
+                                10,
+                                "A1 Feminino",
+                                List.of(
+                                        new SeasonCatalog.Category(
+                                                20,
+                                                "Principal",
+                                                1,
+                                                926
+                                        ),
+                                        new SeasonCatalog.Category(
+                                                21,
+                                                "Sub-20",
+                                                2,
+                                                927
+                                        )
+                                )
+                        ),
+
+                        new SeasonCatalog.Division(
+                                11,
+                                "A2 Feminino",
+                                List.of(
+                                        new SeasonCatalog.Category(
+                                                20,
+                                                "Principal",
+                                                1,
+                                                928
                                         )
                                 )
                         )
