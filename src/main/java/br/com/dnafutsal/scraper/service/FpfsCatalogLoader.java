@@ -41,6 +41,22 @@ public class FpfsCatalogLoader {
 
     @Cacheable(
             cacheNames = CACHE_NAME,
+            key = "'titles:' + #season",
+            sync = true
+    )
+    public List<FpfsTitleResponse> titles(int season) {
+        Map<Long, FpfsTitleResponse> active = new LinkedHashMap<>();
+        for (FpfsTitleResponse title : client.titles(season)) {
+            if (title != null && title.id() > 0
+                    && hasText(title.name()) && isActive(title.status())) {
+                active.putIfAbsent(title.id(), title);
+            }
+        }
+        return List.copyOf(active.values());
+    }
+
+    @Cacheable(
+            cacheNames = CACHE_NAME,
             key = "#season + ':' + #titleName",
             sync = true
     )
@@ -197,7 +213,7 @@ public class FpfsCatalogLoader {
                         )
                 )
                 .filter(title ->
-                        normalize(
+                        normalizeTitle(
                                 title.name()
                         ).equals(
                                 normalizeTitle(

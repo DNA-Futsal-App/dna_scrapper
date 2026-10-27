@@ -41,6 +41,12 @@ public class InfrastructureConfig {
                         ),
 
                         cache(
+                                "source-games-page",
+                                500,
+                                Duration.ofMinutes(1)
+                        ),
+
+                        cache(
                                 "event-metadata",
                                 2_000,
                                 Duration.ofMinutes(10)
@@ -55,7 +61,7 @@ public class InfrastructureConfig {
                         cache(
                                 "games",
                                 2_000,
-                                Duration.ofMinutes(10)
+                                Duration.ofMinutes(1)
                         ),
 
                         cache(
@@ -85,7 +91,7 @@ public class InfrastructureConfig {
                         cache(
                                 "snapshot",
                                 500,
-                                Duration.ofMinutes(10)
+                                Duration.ofMinutes(1)
                         ),
 
                         cache(

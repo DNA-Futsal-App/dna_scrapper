@@ -27,6 +27,16 @@ public class CatalogController {
                 catalogService;
     }
 
+    @GetMapping("/titles")
+    public List<CatalogOption> titles(
+            @RequestParam(required = false)
+            @Min(2016)
+            @Max(2100)
+            Integer season
+    ) {
+        return catalogService.titles(resolveSeason(season));
+    }
+
     @GetMapping("/divisions")
     public List<CatalogOption> divisions(
             @RequestParam(required = false)

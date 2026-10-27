@@ -36,7 +36,7 @@ public class EventSourceService {
     }
 
     @Cacheable(
-            cacheNames = "source-page",
+            cacheNames = "source-games-page",
             key = "'games:' + #eventId",
             sync = true
     )

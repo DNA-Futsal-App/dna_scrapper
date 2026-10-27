@@ -25,6 +25,12 @@ public class FpfsCatalogService {
         this.loader = loader;
     }
 
+    public List<CatalogOption> titles(int season) {
+        return loader.titles(season).stream()
+                .map(title -> new CatalogOption(title.id(), title.name().trim()))
+                .toList();
+    }
+
     public List<CatalogOption> divisions(
             int season,
             String title
